@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Surat - Sistem Informasi Tata Usaha SD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { main: '#1b2240', card: '#252d4e', hover: '#2f3961' },
+                        teal: { main: '#047787', card: '#0b8b9c', hover: '#109fb2' },
+                        dongker: { 800: '#1e3a8a' },
+                        cyan: { 600: '#0891b2' }
+                    },
+                    animation: {
+                        blob: "blob 7s infinite",
+                    },
+                    keyframes: {
+                        blob: {
+                            "0%": { transform: "translate(0px, 0px) scale(1)" },
+                            "33%": { transform: "translate(30px, -50px) scale(1.1)" },
+                            "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
+                            "100%": { transform: "translate(0px, 0px) scale(1)" },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background-color: #f8fafc; }
+       
+        /* Custom Scrollbar for Lists */
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        /* Sliding Sidebar Transition */
+        #sidebar { transition: transform 0.3s ease-in-out; z-index: 50; }
+        #sidebar-overlay { transition: opacity 0.3s ease-in-out; z-index: 40; }
+
+        /* Hide Views */
+        .view-section { display: none; height: 100%; }
+        .view-section.active { display: flex; flex-direction: column; }
+       
+        /* Delay utility for blob animations */
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+
+        /* ========================================================
+           SLIDING LOGIN ANIMATION CSS (Customized for Contrast)
+           ======================================================== */
+        .sliding-container {
+            position: relative;
+            overflow: hidden;
+            width: 768px;
+            max-width: 95%;
+            min-height: 520px; /* Diperbesar sedikit agar lega */
+            background-color: #fff;
+            border-radius: 30px;
+            box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+        }
+
+        .sliding-container .form-container {
+            position: absolute; top: 0; height: 100%; transition: all 0.6s ease-in-out;
+        }
+
+        .sliding-container .sign-in-container { left: 0; width: 50%; z-index: 2; }
+        .sliding-container .sign-up-container { left: 0; width: 50%; opacity: 0; z-index: 1; }
+
+        .sliding-container.active .sign-in-container { transform: translateX(100%); }
+        .sliding-container.active .sign-up-container {
+            transform: translateX(100%); opacity: 1; z-index: 5; animation: show 0.6s;
+        }
+
+        @keyframes show {
+            0%, 49.99% { opacity: 0; z-index: 1; }
+            50%, 100% { opacity: 1; z-index: 5; }
+        }
+
+        .sliding-container .overlay-container {
+            position: absolute; top: 0; left: 50%; width: 50%; height: 100%;
+            overflow: hidden; transition: transform 0.6s ease-in-out, border-radius 0.6s ease-in-out;
+            z-index: 100; border-radius: 150px 0 0 150px;
+        }
+
+        .sliding-container.active .overlay-container {
+            transform: translateX(-100%); border-radius: 0 150px 150px 0;
+        }
+
+        .sliding-container .overlay {
+            /* Tema warna E-Surat: Gradasi Navy ke Teal */
+            background: linear-gradient(135deg, #1b2240 0%, #047787 100%);
+            background-repeat: no-repeat; background-size: cover; background-position: 0 0;
+            color: #FFFFFF; position: relative; left: -100%; height: 100%; width: 200%;
+            transform: translateX(0); transition: transform 0.6s ease-in-out;
+        }
+
+        .sliding-container.active .overlay { transform: translateX(50%); }
+
+        .sliding-container .overlay-panel {
+            position: absolute; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; padding: 0 40px; text-align: center; top: 0; height: 100%;
+            width: 50%; transform: translateX(0); transition: transform 0.6s ease-in-out;
+        }
+
+        .sliding-container .overlay-left { transform: translateX(-20%); }
+        .sliding-container.active .overlay-left { transform: translateX(0); }
+        .sliding-container .overlay-right { right: 0; transform: translateX(0); }
+        .sliding-container.active .overlay-right { transform: translateX(20%); }
+
+        /* Form & Input Styling (High Contrast) */
+        .sliding-container form {
+            background-color: #FFFFFF; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; padding: 0 40px; height: 100%; text-align: center;
+        }
+        .sliding-container h1 { font-weight: 800; color: #1b2240; font-size: 28px; margin-bottom: 5px; }
+        .sliding-container p.subtext { font-size: 13px; font-weight: 500; color: #64748b; margin-bottom: 20px; }
+       
+        .sliding-container input {
+            background-color: #f1f5f9; border: 1px solid #e2e8f0; color: #0f172a;
+            padding: 12px 15px; margin: 8px 0; width: 100%; border-radius: 12px;
+            outline: none; transition: 0.3s; font-size: 14px; font-weight: 500;
+        }
+        .sliding-container input::placeholder { color: #94a3b8; }
+        .sliding-container input:focus { border-color: #047787; box-shadow: 0 0 0 3px rgba(4, 119, 135, 0.15); background-color: #ffffff; }
+
+        .sliding-container a.forgot-link {
+            color: #64748b; font-size: 13px; text-decoration: none; margin: 15px 0; font-weight: 600; transition: 0.3s;
+        }
+        .sliding-container a.forgot-link:hover { color: #047787; }
+
+        /* Buttons Styling */
+        .sliding-container button {
+            background-color: #1b2240; color: #fff; font-size: 13px; padding: 12px 45px;
+            border: 1px solid transparent; border-radius: 12px; font-weight: 700;
+            letter-spacing: 0.5px; text-transform: uppercase; margin-top: 10px;
+            cursor: pointer; transition: transform 80ms ease-in, background-color 0.3s;
+            width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .sliding-container button:hover { background-color: #047787; }
+        .sliding-container button:active { transform: scale(0.97); }
+       
+        .sliding-container button.ghost {
+            background-color: transparent; border-color: #fff; border-width: 2px;
+            width: auto; padding: 10px 45px;
+        }
+        .sliding-container button.ghost:hover { background-color: #fff; color: #1b2240; }
+
+        .social-container { margin: 15px 0; }
+        .social-container a {
+            border: 1px solid #cbd5e1; border-radius: 50%; display: inline-flex;
+            justify-content: center; align-items: center; margin: 0 5px; height: 45px; width: 45px;
+            transition: 0.3s; color: #475569; font-size: 18px;
+        }
+        .social-container a:hover {
+            background-color: #047787; color: white; border-color: #047787;
+        }
+
+        /* Responsive Fix for mobile */
+        @media (max-width: 768px) {
+            .sliding-container .sign-in-container { width: 100%; }
+            .sliding-container .overlay-container { display: none; }
+            .sliding-container.active .sign-up-container { width: 100%; transform: translateX(0); left: 0; }
+            .sliding-container.active .sign-in-container { opacity: 0; pointer-events: none; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 h-screen w-screen flex flex-col relative">
+
+    <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center overflow-hidden transition-opacity duration-700">
+       
+        <div class="absolute top-0 -left-4 w-72 md:w-96 h-72 md:h-96 bg-teal-main rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
+        <div class="absolute top-0 -right-4 w-72 md:w-96 h-72 md:h-96 bg-cyan-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-8 left-20 w-72 md:w-96 h-72 md:h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+
+        <div class="sliding-container z-10" id="sliding-container">
+           
+            <div class="form-container sign-up-container">
+                <form action="#">
+                    <h1>Buat Akun</h1>
+                    <div class="social-container">
+                        <a href="#" class="social"><i class="fab fa-google"></i></a>
+                    </div>
+                    <span class="text-slate-400 text-xs font-medium mb-2">atau gunakan email untuk registrasi</span>
+                    <input type="text" placeholder="Nama Lengkap" />
+                    <input type="email" placeholder="Email" />
+                    <input type="password" placeholder="Password" />
+                    <button type="button" onclick="customAlert('Info', 'Ini hanya form demo animasi Sign Up!')">Daftar Sekarang</button>
+                    <p class="md:hidden mt-4 text-sm text-slate-500 cursor-pointer hover:text-navy-main font-bold" id="mobileSignIn">← Kembali ke Login</p>
+                </form>
+            </div>
+           
+            <div class="form-container sign-in-container">
+                <form id="form-login" onsubmit="prosesLogin(event)">
+                    <div class="w-12 h-12 bg-gradient-to-tr from-teal-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg mb-4">
+                        <i data-lucide="mail" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h1>E-Surat SD</h1>
+                    <p class="subtext">Sistem Informasi Tata Usaha Digital</p>
+                   
+                    <input type="text" id="username" required placeholder="Username atau NIP" />
+                    <input type="password" id="password" required placeholder="Kata Sandi" />
+                   
+                    <a href="#" class="forgot-link">Lupa Password Anda?</a>
+                   
+                    <button type="submit" id="btn-login">
+                        <span id="btn-login-text">Masuk ke Sistem</span>
+                        <i data-lucide="arrow-right" id="btn-login-icon" class="w-4 h-4"></i>
+                        <svg id="btn-login-spinner" class="animate-spin hidden w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                   
+                    <p class="md:hidden mt-6 text-sm text-slate-500">Belum punya akun? <span class="text-teal-main font-bold cursor-pointer" id="mobileSignUp">Daftar di sini</span></p>
+                </form>
+            </div>
+           
+            <div class="overlay-container">
+                <div class="overlay">
+                    <div class="overlay-panel overlay-left">
+                        <h1 class="text-3xl font-extrabold text-white mb-4">Sudah Punya Akun?</h1>
+                        <p class="text-sm font-medium text-slate-100 leading-relaxed mb-8">
+                            Silakan login menggunakan akun yang telah terdaftar untuk mulai mengelola arsip dan tata usaha.
+                        </p>
+                        <button class="ghost" id="signIn">Sign In Sekarang</button>
+                    </div>
+                    <div class="overlay-panel overlay-right">
+                        <h1 class="text-3xl font-extrabold text-white mb-4">Halo, Rekan Guru!</h1>
+                        <p class="text-sm font-medium text-slate-100 leading-relaxed mb-8">
+                            Belum punya akses? Masukkan detail personal Anda untuk mendaftar akun Tata Usaha baru.
+                        </p>
+                        <button class="ghost" id="signUp">Sign Up Akun</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-30 flex-shrink-0">
+        <div class="flex items-center gap-4 sm:gap-8">
+            <button onclick="toggleSidebar()" class="p-2 text-slate-600 hover:text-navy-main hover:bg-slate-100 rounded-lg transition-colors">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+            <div class="flex items-center gap-2 font-bold text-lg text-navy-main cursor-pointer" onclick="switchView('dashboard')">
+                <span id="app-name-display" class="text-navy-main">E-Surat SD</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-6 ml-4 text-sm font-medium">
+                <a href="#" onclick="switchView('dashboard')" class="nav-link text-navy-main border-b-2 border-navy-main pb-1" data-target="dashboard">Dashboard</a>
+                <a href="#" onclick="switchView('surat-masuk')" class="nav-link text-slate-500 hover:text-navy-main pb-1" data-target="surat-masuk">Surat Masuk</a>
+                <a href="#" onclick="switchView('surat-keluar')" class="nav-link text-slate-500 hover:text-navy-main pb-1" data-target="surat-keluar">Surat Keluar</a>
+                <a href="#" onclick="switchView('templat')" class="nav-link text-slate-500 hover:text-navy-main pb-1" data-target="templat">Templat</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="text-slate-500 hover:text-navy-main relative">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="absolute 0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            <button onclick="openModal('modal-pengaturan')" class="text-slate-500 hover:text-navy-main">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+            <img id="logo-kanan-atas" src="https://ui-avatars.com/api/?name=Admin&background=1e293b&color=fff" alt="User" class="w-8 h-8 object-cover rounded-full border border-slate-200 cursor-pointer">
+        </div>
+    </header>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 opacity-0 pointer-events-none transition-all"></div>
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-2xl transform -translate-x-full flex flex-col">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-slate-100">
+            <span class="font-bold text-lg text-navy-main">Menu Navigasi</span>
+            <button onclick="toggleSidebar()" class="p-2 text-slate-400 hover:text-red-500 rounded-lg">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        <div class="p-4 flex-1 overflow-y-auto">
+            <nav class="space-y-1 mb-8">
+                <a href="#" onclick="switchView('dashboard'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+                </a>
+                <a href="#" onclick="switchView('surat-masuk'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium justify-between">
+                    <div class="flex items-center gap-3"><i data-lucide="inbox" class="w-5 h-5"></i> Surat Masuk</div>
+                    <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Baru</span>
+                </a>
+                <a href="#" onclick="switchView('surat-keluar'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium">
+                    <i data-lucide="send" class="w-5 h-5"></i> Surat Keluar
+                </a>
+                <a href="#" onclick="switchView('templat'); toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium">
+                    <i data-lucide="layout-template" class="w-5 h-5"></i> Template Surat
+                </a>
+            </nav>
+
+            <p class="text-xs font-bold text-slate-400 mb-3 px-2 uppercase tracking-wider">Pengaturan & Arsip</p>
+            <nav class="space-y-1">
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium">
+                    <i data-lucide="folder-search" class="w-5 h-5"></i> Pencarian Cerdas
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i> Validasi TTE
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-lg font-medium">
+                    <i data-lucide="file-spreadsheet" class="w-5 h-5"></i> Export Laporan
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-100">
+            <button onclick="prosesLogout()" class="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">
+                <i data-lucide="log-out" class="w-5 h-5"></i> Keluar Aplikasi
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-hidden relative">
+        <div id="view-dashboard" class="view-section active">
+            <div class="flex flex-col md:flex-row h-full">
+                <div class="w-full md:w-1/2 bg-navy-main text-white p-6 md:p-8 flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-6 flex-shrink-0">
+                        <div>
+                            <p class="text-[10px] font-bold tracking-widest text-blue-300 uppercase mb-1">Kendali Arsip</p>
+                            <h1 class="text-3xl font-bold tracking-tight">Surat Masuk</h1>
+                        </div>
+                        <div class="text-right">
+                            <h2 id="total-masuk" class="text-4xl font-bold text-cyan-400 leading-none">124</h2>
+                            <p class="text-[10px] tracking-wider text-slate-300 uppercase mt-1">Total Bulan Ini</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-6 flex-shrink-0">
+                        <div class="bg-navy-card rounded-xl p-4 border border-slate-700/50 hover:bg-navy-hover transition cursor-pointer">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-300 mb-3"></i>
+                            <div class="text-2xl font-bold mb-1">28</div>
+                            <div class="text-[10px] text-slate-300 uppercase tracking-wide">Perlu Disposisi</div>
+                        </div>
+                        <div class="bg-navy-card rounded-xl p-4 border border-slate-700/50 hover:bg-navy-hover transition cursor-pointer">
+                            <i data-lucide="mail-warning" class="w-5 h-5 text-red-400 mb-3"></i>
+                            <div class="text-2xl font-bold mb-1">14</div>
+                            <div class="text-[10px] text-slate-300 uppercase tracking-wide">Belum Dibaca</div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-3 flex-shrink-0">
+                        <h3 class="font-bold text-sm">Aktivitas Terkini</h3>
+                        <a href="#" onclick="switchView('surat-masuk')" class="text-xs text-blue-300 hover:text-white">Lihat Semua</a>
+                    </div>
+
+                    <div class="flex-1 min-h-0 overflow-y-auto custom-scroll space-y-3 pr-2" id="dash-masuk-list">
+                        </div>
+
+                    <div class="flex-shrink-0 mt-5 pt-5 border-t border-slate-700/50">
+                        <button onclick="customAlert('Info','Tombol Input Surat Masuk di-klik')" class="w-full bg-teal-main hover:bg-teal-hover text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-teal-400/30">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Input Surat Masuk
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-1/2 bg-teal-main text-white p-6 md:p-8 flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-6 flex-shrink-0">
+                        <div>
+                            <p class="text-[10px] font-bold tracking-widest text-teal-200 uppercase mb-1">Draft & Publikasi</p>
+                            <h1 class="text-3xl font-bold tracking-tight">Surat Keluar</h1>
+                        </div>
+                        <div class="text-right">
+                            <h2 class="text-4xl font-bold text-white leading-none">86</h2>
+                            <p class="text-[10px] tracking-wider text-teal-100 uppercase mt-1">Total Terbit</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-6 flex-shrink-0">
+                        <div class="bg-teal-card rounded-xl p-4 border border-teal-300/20 hover:bg-teal-hover transition cursor-pointer">
+                            <i data-lucide="pen-tool" class="w-5 h-5 text-teal-100 mb-3"></i>
+                            <div class="text-2xl font-bold mb-1">12</div>
+                            <div class="text-[10px] text-teal-100 uppercase tracking-wide">Menunggu TTD</div>
+                        </div>
+                        <div class="bg-teal-card rounded-xl p-4 border border-teal-300/20 hover:bg-teal-hover transition cursor-pointer">
+                            <i data-lucide="save" class="w-5 h-5 text-teal-100 mb-3"></i>
+                            <div class="text-2xl font-bold mb-1">7</div>
+                            <div class="text-[10px] text-teal-100 uppercase tracking-wide">Draft Tersimpan</div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-3 flex-shrink-0">
+                        <h3 class="font-bold text-sm">Daftar Surat Keluar Terbaru</h3>
+                        <span class="text-[10px] text-teal-200 uppercase tracking-wide">Cek No. Terakhir</span>
+                    </div>
+
+                    <div class="flex-1 min-h-0 overflow-y-auto custom-scroll space-y-3 pr-2" id="dash-keluar-list">
+                        <div class="bg-teal-card p-4 rounded-xl border border-teal-400/30 text-sm">Belum ada aktivitas surat keluar.</div>
+                    </div>
+
+                    <div class="flex-shrink-0 mt-5 pt-5 border-t border-teal-600/50">
+                        <button onclick="switchView('templat')" class="w-full bg-white text-teal-main hover:bg-slate-50 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all">
+                            <i data-lucide="file-text" class="w-5 h-5"></i> Buat Surat Baru
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-surat-masuk" class="view-section bg-slate-50 p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold text-navy-main mb-6">Arsip Surat Masuk</h2>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="p-4">No</th>
+                                <th class="p-4">Asal Instansi</th>
+                                <th class="p-4">Perihal</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="full-masuk-table">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-surat-keluar" class="view-section bg-slate-50 p-6 overflow-y-auto">
+             <h2 class="text-2xl font-bold text-teal-main mb-6">Buku Agenda Surat Keluar</h2>
+             <div class="bg-white p-10 rounded-xl text-center border">
+                <i data-lucide="send" class="mx-auto w-12 h-12 text-slate-300 mb-4"></i>
+                <p class="text-slate-500">Data surat keluar akan tampil di sini saat backend terhubung secara penuh.</p>
+             </div>
+        </div>
+
+        <div id="view-templat" class="view-section bg-slate-50 p-6 overflow-y-auto">
+            <div class="max-w-6xl mx-auto w-full">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-navy-main">Pilih Templat Surat</h2>
+                    <p class="text-slate-500 text-sm mt-1">Pilih format standar untuk generate dokumen otomatis.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition cursor-pointer group hover:border-teal-main" onclick="customAlert('Templat', 'Fitur Templat Aktif Belajar akan segera hadir')">
+                        <div class="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-main transition">
+                            <i data-lucide="graduation-cap" class="w-5 h-5 text-teal-600 group-hover:text-white"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 mb-1">Ket. Aktif Belajar</h3>
+                        <p class="text-xs text-slate-500 mb-4 line-clamp-2">Surat keterangan resmi bahwa siswa tersebut aktif bersekolah.</p>
+                        <span class="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded">421.2 / Kesiswaan</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="custom-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50" onclick="closeCustomModal()"></div>
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full z-10 shadow-2xl">
+            <h3 id="modal-title" class="text-lg font-bold text-navy-main mb-2">Notifikasi</h3>
+            <p id="modal-body" class="text-slate-600 mb-6"></p>
+            <button onclick="closeCustomModal()" class="w-full bg-navy-main text-white py-2 rounded-xl font-bold">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // URL SCRIPT GOOGLE APPS SCRIPT ANDA DI SINI
+        // ==========================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt-0l1uIMpTaJ4kWda8K8g9nm_YKMs8bZugHv54ZfTIF8d-ONuIkr3HZWKJizNVhlbGg/exec";
+
+        let currentUser = null;
+
+        // INITIALIZE ICONS
+        lucide.createIcons();
+
+        // SLIDING LOGIN TOGGLE
+        const signUpButton = document.getElementById('signUp');
+        const signInButton = document.getElementById('signIn');
+        const container = document.getElementById('sliding-container');
+        const mobileSignUp = document.getElementById('mobileSignUp');
+        const mobileSignIn = document.getElementById('mobileSignIn');
+
+        signUpButton.addEventListener('click', () => container.classList.add("active"));
+        signInButton.addEventListener('click', () => container.classList.remove("active"));
+        if(mobileSignUp) mobileSignUp.addEventListener('click', () => container.classList.add("active"));
+        if(mobileSignIn) mobileSignIn.addEventListener('click', () => container.classList.remove("active"));
+
+        // UTILITIES
+        function customAlert(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerText = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeCustomModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        // NAVIGATION
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+           
+            // Update nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if(link.getAttribute('data-target') === viewId) {
+                    link.classList.add('text-navy-main', 'border-b-2', 'border-navy-main');
+                    link.classList.remove('text-slate-500');
+                } else {
+                    link.classList.remove('text-navy-main', 'border-b-2', 'border-navy-main');
+                    link.classList.add('text-slate-500');
+                }
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isOpen = sidebar.classList.contains('translate-x-0');
+
+            if(isOpen) {
+                sidebar.classList.replace('translate-x-0', '-translate-x-full');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+            } else {
+                sidebar.classList.replace('-translate-x-full', 'translate-x-0');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // LOGIN PROCESS
+        async function prosesLogin(event) {
+            event.preventDefault();
+           
+            const userInp = document.getElementById('username').value;
+            const passInp = document.getElementById('password').value;
+            const btn = document.getElementById('btn-login');
+            const btnText = document.getElementById('btn-login-text');
+            const btnIcon = document.getElementById('btn-login-icon');
+            const btnSpinner = document.getElementById('btn-login-spinner');
+
+            // UI State Loading
+            btn.disabled = true;
+            btnText.innerText = "Memverifikasi...";
+            btnIcon.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
+
+            try {
+                // INTEGRASI URL SCRIPT GOOGLE
+                const response = await fetch(`${SCRIPT_URL}?action=login&username=${encodeURIComponent(userInp)}&password=${encodeURIComponent(passInp)}`);
+                const result = await response.json();
+
+                if (result.status === "success" || result.success === true) {
+                    berhasilLogin(result.user || { name: userInp });
+                } else {
+                    throw new Error(result.message || "Username atau Password salah.");
+                }
+
+            } catch (error) {
+                console.error("Login Error:", error);
+               
+                // Fallback / Simulasi Offline jika GAS belum diset return JSON-nya
+                if (userInp === "admin" && passInp === "admin") {
+                   berhasilLogin({ name: "Administrator" });
+                } else {
+                    customAlert("Login Gagal", "Gagal menghubungkan ke server atau kredensial salah.");
+                }
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = "Masuk ke Sistem";
+                btnIcon.classList.remove('hidden');
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        function berhasilLogin(user) {
+            currentUser = user;
+            document.getElementById('login-overlay').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                document.getElementById('login-overlay').style.display = 'none';
+            }, 700);
+           
+            renderDashboard();
+        }
+
+        function prosesLogout() {
+            location.reload(); 
+        }
+
+        // RENDER DATA
+        function renderDashboard() {
+            const dashMasuk = document.getElementById('dash-masuk-list');
+            const mockDataMasuk = [
+                { id: 1, asal: "Dinas Pendidikan", perihal: "Undangan Rapat BOS", tgl: "12 Okt" },
+                { id: 2, asal: "Kecamatan", perihal: "Himbauan Kebersihan", tgl: "10 Okt" },
+                { id: 3, asal: "Puskesmas", perihal: "Jadwal BIAS", tgl: "08 Okt" }
+            ];
+
+            dashMasuk.innerHTML = mockDataMasuk.map(item => `
+                <div class="bg-navy-card p-4 rounded-xl border border-slate-700/50 hover:bg-navy-hover transition cursor-pointer">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-[10px] font-bold text-blue-300 uppercase">${item.asal}</span>
+                        <span class="text-[10px] text-slate-400">${item.tgl}</span>
+                    </div>
+                    <p class="text-sm font-medium text-white line-clamp-1">${item.perihal}</p>
+                </div>
+            `).join('');
+
+            const tableBody = document.getElementById('full-masuk-table');
+            tableBody.innerHTML = mockDataMasuk.map((item, idx) => `
+                <tr class="hover:bg-slate-50 border-b">
+                    <td class="p-4">${idx + 1}</td>
+                    <td class="p-4 font-bold text-navy-main">${item.asal}</td>
+                    <td class="p-4">${item.perihal}</td>
+                    <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Selesai</span></td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
