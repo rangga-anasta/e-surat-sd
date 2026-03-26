@@ -18,15 +18,6 @@
                     colors: {
                         navy: { main: '#1b2240', card: '#252d4e', hover: '#2f3961' },
                         teal: { main: '#047787', card: '#0b8b9c', hover: '#109fb2' }
-                    },
-                    animation: { blob: "blob 7s infinite" },
-                    keyframes: {
-                        blob: {
-                            "0%": { transform: "translate(0px, 0px) scale(1)" },
-                            "33%": { transform: "translate(30px, -50px) scale(1.1)" },
-                            "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
-                            "100%": { transform: "translate(0px, 0px) scale(1)" },
-                        }
                     }
                 }
             }
@@ -39,193 +30,255 @@
         .view-section { display: none; height: 100%; }
         .view-section.active { display: flex; flex-direction: column; }
         
-        /* Login Sliding Animation */
+        /* Login Panel */
+        #login-overlay { transition: opacity 0.5s ease; }
         .sliding-container {
-            position: relative; overflow: hidden; width: 768px; max-width: 95%; min-height: 520px;
-            background-color: #fff; border-radius: 30px; box-shadow: 0 14px 28px rgba(0,0,0,0.25);
-        }
-        .form-container { position: absolute; top: 0; height: 100%; transition: all 0.6s ease-in-out; }
-        .sign-in-container { left: 0; width: 50%; z-index: 2; }
-        .overlay-container {
-            position: absolute; top: 0; left: 50%; width: 50%; height: 100%;
-            overflow: hidden; transition: transform 0.6s ease-in-out; z-index: 100;
-        }
-        .overlay {
-            background: linear-gradient(135deg, #1b2240 0%, #047787 100%);
-            color: #FFFFFF; position: relative; left: -100%; height: 100%; width: 200%;
-            transform: translateX(0); transition: transform 0.6s ease-in-out;
-        }
-        .overlay-panel {
-            position: absolute; display: flex; align-items: center; justify-content: center;
-            flex-direction: column; padding: 0 40px; text-align: center; top: 0; height: 100%; width: 50%;
-        }
-        .overlay-right { right: 0; }
-        .modal-input {
-            background-color: #f1f5f9; border: 1px solid #e2e8f0;
-            padding: 12px 15px; margin: 8px 0; width: 100%; border-radius: 12px; outline: none;
+            position: relative; overflow: hidden; width: 768px; max-width: 95%; min-height: 500px;
+            background-color: #fff; border-radius: 30px; box-shadow: 0 14px 28px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body class="text-slate-800 h-screen w-screen flex flex-col">
 
     <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center">
-        <div class="sliding-container">
-            <div class="form-container sign-in-container">
-                <form class="flex flex-col items-center justify-center h-full p-10 text-center" onsubmit="prosesLogin(event)">
-                    <h1 class="text-2xl font-bold mb-2">E-Surat SD</h1>
-                    <p class="text-sm text-slate-500 mb-5">Sistem Tata Usaha Digital</p>
-                    <input type="text" placeholder="Username" class="modal-input" required />
-                    <input type="password" placeholder="Password" class="modal-input" required />
-                    <button type="submit" class="mt-4 bg-navy-main text-white px-10 py-3 rounded-xl font-bold hover:bg-teal-main transition">MASUK</button>
-                </form>
+        <div class="sliding-container flex">
+            <div class="w-full md:w-1/2 p-10 flex flex-col justify-center items-center text-center">
+                <h1 class="text-3xl font-extrabold text-navy-main mb-2">E-Surat SD</h1>
+                <p class="text-slate-500 mb-8 text-sm">Masuk ke Sistem Tata Usaha Digital</p>
+                <input type="text" placeholder="Username" class="w-full p-3 bg-slate-100 border rounded-xl mb-3 outline-none">
+                <input type="password" placeholder="Password" class="w-full p-3 bg-slate-100 border rounded-xl mb-6 outline-none">
+                <button onclick="prosesLogin()" class="w-full bg-navy-main text-white py-3 rounded-xl font-bold hover:bg-teal-main transition">LOGIN SEKARANG</button>
             </div>
-            <div class="overlay-container hidden md:block">
-                <div class="overlay">
-                    <div class="overlay-panel overlay-right">
-                        <h1 class="text-2xl font-bold mb-4">Halo, Rekan Guru!</h1>
-                        <p class="text-sm mb-8">Silakan login untuk mengelola arsip surat sekolah Anda dengan mudah dan cepat.</p>
-                    </div>
-                </div>
+            <div class="hidden md:flex w-1/2 bg-gradient-to-br from-navy-main to-teal-main p-10 flex-col justify-center text-white">
+                <h2 class="text-2xl font-bold mb-4">Selamat Datang!</h2>
+                <p class="opacity-80 text-sm leading-relaxed">Kelola arsip surat masuk dan keluar dengan fitur diagram otomatis dan integrasi email.</p>
             </div>
         </div>
     </div>
 
-    <header class="h-16 bg-white border-b flex items-center justify-between px-6 z-30">
+    <header class="h-16 bg-white border-b flex items-center justify-between px-6 z-30 flex-shrink-0">
         <div class="flex items-center gap-4">
             <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
             <span class="font-bold text-xl text-navy-main">E-Surat SD</span>
         </div>
-        <div class="flex items-center gap-4">
-            <div id="status-online" class="hidden text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">ONLINE</div>
-            <i data-lucide="bell" class="w-5 h-5 text-slate-500"></i>
-            <img src="https://ui-avatars.com/api/?name=Admin&background=1b2240&color=fff" class="w-8 h-8 rounded-full">
+        <div class="flex items-center gap-4 text-slate-500">
+            <div id="sync-status" class="hidden text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded">SINKRON ONLINE</div>
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <img src="https://ui-avatars.com/api/?name=Admin&background=1b2240&color=fff" class="w-8 h-8 rounded-full border">
         </div>
     </header>
 
-    <main class="flex-1 overflow-hidden relative flex">
-        <aside id="sidebar" class="fixed md:relative z-40 w-64 h-full bg-white border-r transform -translate-x-full md:translate-x-0 transition-transform">
-            <nav class="p-4 space-y-2">
-                <button onclick="switchView('dashboard')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
-                </button>
-                <button onclick="switchView('surat-masuk')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">
-                    <i data-lucide="inbox" class="w-5 h-5"></i> Surat Masuk
-                </button>
-                <button onclick="switchView('surat-keluar')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">
-                    <i data-lucide="send" class="w-5 h-5"></i> Surat Keluar
-                </button>
-                <hr>
-                <button onclick="location.reload()" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-lg font-medium">
-                    <i data-lucide="log-out" class="w-5 h-5"></i> Keluar
-                </button>
+    <div class="flex-1 flex overflow-hidden">
+        <aside id="sidebar" class="w-64 bg-white border-r flex flex-col transition-all duration-300">
+            <nav class="p-4 space-y-2 flex-1">
+                <button onclick="switchView('dashboard')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+                <button onclick="switchView('surat-masuk')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium"><i data-lucide="inbox"></i> Surat Masuk</button>
+                <button onclick="switchView('surat-keluar')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl font-medium"><i data-lucide="send"></i> Surat Keluar</button>
             </nav>
+            <div class="p-4 border-t">
+                <button onclick="location.reload()" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-medium"><i data-lucide="log-out"></i> Logout</button>
+            </div>
         </aside>
 
-        <div class="flex-1 overflow-y-auto custom-scroll p-6 bg-slate-50">
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-6 custom-scroll">
+            
             <div id="view-dashboard" class="view-section active">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-navy-main p-6 rounded-2xl text-white">
-                        <p class="text-sm opacity-80">Total Surat Masuk</p>
-                        <h2 id="count-masuk" class="text-4xl font-bold">0</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-navy-main p-6 rounded-3xl text-white shadow-lg">
+                        <div class="flex justify-between items-center mb-4"><span class="text-xs font-bold opacity-70 uppercase tracking-widest">Surat Masuk</span><i data-lucide="trending-up" class="text-cyan-400"></i></div>
+                        <h2 id="count-masuk" class="text-4xl font-extrabold">0</h2>
                     </div>
-                    <div class="bg-teal-main p-6 rounded-2xl text-white">
-                        <p class="text-sm opacity-80">Total Surat Keluar</p>
-                        <h2 id="count-keluar" class="text-4xl font-bold">0</h2>
+                    <div class="bg-teal-main p-6 rounded-3xl text-white shadow-lg">
+                        <div class="flex justify-between items-center mb-4"><span class="text-xs font-bold opacity-70 uppercase tracking-widest">Surat Keluar</span><i data-lucide="trending-up" class="text-teal-200"></i></div>
+                        <h2 id="count-keluar" class="text-4xl font-extrabold">0</h2>
                     </div>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border">
-                    <h3 class="font-bold mb-4">Statistik Surat 2026</h3>
-                    <canvas id="suratChart" height="100"></canvas>
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-navy-main mb-6 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-5 h-5"></i> Grafik Perbandingan Arsip</h3>
+                    <div class="max-w-4xl mx-auto h-72">
+                        <canvas id="lineChart"></canvas>
+                    </div>
                 </div>
             </div>
 
             <div id="view-surat-masuk" class="view-section">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">Arsip Surat Masuk</h2>
-                    <button class="bg-navy-main text-white px-4 py-2 rounded-lg text-sm">+ Tambah</button>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-navy-main">Arsip Surat Masuk</h2>
+                    <button class="bg-navy-main text-white px-5 py-2 rounded-xl font-bold text-sm">+ Entri Surat</button>
                 </div>
-                <div class="bg-white rounded-xl border overflow-hidden">
+                <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 border-b">
+                        <thead class="bg-slate-50 border-b text-slate-500 font-bold">
                             <tr>
-                                <th class="p-4">Tanggal</th>
-                                <th class="p-4">Nomor Surat</th>
-                                <th class="p-4">Asal</th>
-                                <th class="p-4">Perihal</th>
+                                <th class="p-4">TANGGAL</th>
+                                <th class="p-4">NO. SURAT</th>
+                                <th class="p-4">ASAL</th>
+                                <th class="p-4">PERIHAL</th>
+                                <th class="p-4">STATUS</th>
+                                <th class="p-4 text-center">AKSI</th>
                             </tr>
                         </thead>
                         <tbody id="table-masuk"></tbody>
                     </table>
+                    <div class="p-4 border-t flex justify-between items-center bg-slate-50">
+                        <span class="text-xs text-slate-500">Menampilkan 1-5 data</span>
+                        <div class="flex gap-1">
+                            <button class="px-3 py-1 border rounded bg-white text-xs hover:bg-slate-100">Prev</button>
+                            <button class="px-3 py-1 border rounded bg-navy-main text-white text-xs">1</button>
+                            <button class="px-3 py-1 border rounded bg-white text-xs">2</button>
+                            <button class="px-3 py-1 border rounded bg-white text-xs hover:bg-slate-100">Next</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </main>
+
+            <div id="view-surat-keluar" class="view-section">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-teal-main">Buku Surat Keluar</h2>
+                    <button class="bg-teal-main text-white px-5 py-2 rounded-xl font-bold text-sm">+ Entri Surat</button>
+                </div>
+                <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 border-b text-slate-500 font-bold">
+                            <tr>
+                                <th class="p-4">TANGGAL</th>
+                                <th class="p-4">NO. SURAT</th>
+                                <th class="p-4">TUJUAN</th>
+                                <th class="p-4">PERIHAL</th>
+                                <th class="p-4 text-center">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-keluar"></tbody>
+                    </table>
+                    <div class="p-4 border-t flex justify-between items-center bg-slate-50">
+                        <span class="text-xs text-slate-500">Menampilkan 1-5 data</span>
+                        <div class="flex gap-1">
+                            <button class="px-3 py-1 border rounded bg-white text-xs">Prev</button>
+                            <button class="px-3 py-1 border rounded bg-teal-main text-white text-xs">1</button>
+                            <button class="px-3 py-1 border rounded bg-white text-xs">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
 
     <script>
         lucide.createIcons();
-
-        // GANTI URL INI DENGAN URL GOOGLE APPS SCRIPT ANDA
+        
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyt-0l1uIMpTaJ4kWda8K8g9nm_YKMs8bZugHv54ZfTIF8d-ONuIkr3HZWKJizNVhlbGg/exec";
+        let chartInstance = null;
 
-        let dataSurat = { masuk: [], keluar: [] };
-
-        function prosesLogin(e) {
-            e.preventDefault();
-            document.getElementById('login-overlay').style.display = 'none';
-            fetchData();
+        function prosesLogin() {
+            document.getElementById('login-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('login-overlay').style.display = 'none';
+                loadData();
+            }, 500);
         }
 
         function toggleSidebar() {
-            const sb = document.getElementById('sidebar');
-            sb.classList.toggle('-translate-x-full');
+            const side = document.getElementById('sidebar');
+            side.classList.toggle('w-0');
+            side.classList.toggle('overflow-hidden');
         }
 
-        function switchView(id) {
+        function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-            document.getElementById('view-' + id).classList.add('active');
+            document.getElementById('view-' + viewId).classList.add('active');
         }
 
-        async function fetchData() {
+        async function loadData() {
             try {
                 const res = await fetch(GAS_URL);
                 const data = await res.json();
-                dataSurat = data;
-                document.getElementById('status-online').classList.remove('hidden');
-                renderUI();
+                renderTable(data);
+                document.getElementById('sync-status').classList.remove('hidden');
             } catch (e) {
-                console.log("Offline mode atau URL belum siap.");
+                console.error("Gagal memuat data dari GAS.");
             }
         }
 
-        function renderUI() {
-            document.getElementById('count-masuk').innerText = dataSurat.masuk.length;
-            document.getElementById('count-keluar').innerText = dataSurat.keluar.length;
+        function renderTable(data) {
+            const currentYear = new Date().getFullYear();
+            document.getElementById('count-masuk').innerText = data.masuk.length;
+            document.getElementById('count-keluar').innerText = data.keluar.length;
 
+            // Render Surat Masuk
             const tbodyMasuk = document.getElementById('table-masuk');
-            tbodyMasuk.innerHTML = dataSurat.masuk.map(s => `
-                <tr class="border-b">
+            tbodyMasuk.innerHTML = data.masuk.map(s => `
+                <tr class="border-b hover:bg-slate-50">
                     <td class="p-4">${s.tanggal}</td>
-                    <td class="p-4 font-bold">${s.nomor}</td>
+                    <td class="p-4 font-bold text-navy-main">${s.nomor}</td>
                     <td class="p-4">${s.asal}</td>
                     <td class="p-4">${s.perihal}</td>
+                    <td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold">SELESAI</span></td>
+                    <td class="p-4">
+                        <div class="flex justify-center gap-2">
+                            <button class="p-1.5 text-slate-400 hover:text-navy-main"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                            <button class="p-1.5 text-slate-400 hover:text-teal-600"><i data-lucide="download" class="w-4 h-4"></i></button>
+                            <a href="mailto:?subject=Teruskan Surat: ${s.nomor}&body=Halo, berikut detail surat:%0A%0ANo: ${s.nomor}%0AAsal: ${s.asal}%0APerihal: ${s.perihal}" class="p-1.5 text-slate-400 hover:text-blue-500"><i data-lucide="mail" class="w-4 h-4"></i></a>
+                        </div>
+                    </td>
                 </tr>
             `).join('');
-            
-            initChart();
+
+            // Render Surat Keluar
+            const tbodyKeluar = document.getElementById('table-keluar');
+            tbodyKeluar.innerHTML = data.keluar.map(s => `
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="p-4">${s.tanggal}</td>
+                    <td class="p-4 font-bold text-teal-main">${s.nomor}</td>
+                    <td class="p-4">${s.tujuan}</td>
+                    <td class="p-4">${s.perihal}</td>
+                    <td class="p-4">
+                        <div class="flex justify-center gap-2">
+                            <button class="p-1.5 text-slate-400 hover:text-navy-main"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                            <button class="p-1.5 text-slate-400 hover:text-teal-600"><i data-lucide="download" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            lucide.createIcons();
+            initLineChart(currentYear);
         }
 
-        function initChart() {
-            const ctx = document.getElementById('suratChart').getContext('2d');
-            new Chart(ctx, {
+        function initLineChart(year) {
+            const ctx = document.getElementById('lineChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+            
+            const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'].map(m => `${m} ${year}`);
+            
+            chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-                    datasets: [{
-                        label: 'Surat Masuk',
-                        data: [12, 19, 3, 5, 2, 3],
-                        borderColor: '#1b2240',
-                        tension: 0.4
-                    }]
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Surat Masuk',
+                            data: [12, 19, 15, 25, 22, 30],
+                            borderColor: '#1b2240',
+                            backgroundColor: 'rgba(27, 34, 64, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Surat Keluar',
+                            data: [8, 12, 10, 18, 15, 25],
+                            borderColor: '#047787',
+                            backgroundColor: 'rgba(4, 119, 135, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
