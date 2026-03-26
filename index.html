@@ -66,7 +66,7 @@
             overflow: hidden;
             width: 768px;
             max-width: 95%;
-            min-height: 520px; /* Diperbesar sedikit agar lega */
+            min-height: 520px;
             background-color: #fff;
             border-radius: 30px;
             box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
@@ -100,7 +100,6 @@
         }
 
         .sliding-container .overlay {
-            /* Tema warna E-Surat: Gradasi Navy ke Teal */
             background: linear-gradient(135deg, #1b2240 0%, #047787 100%);
             background-repeat: no-repeat; background-size: cover; background-position: 0 0;
             color: #FFFFFF; position: relative; left: -100%; height: 100%; width: 200%;
@@ -151,6 +150,7 @@
         }
         .sliding-container button:hover { background-color: #047787; }
         .sliding-container button:active { transform: scale(0.97); }
+        .sliding-container button:disabled { background-color: #94a3b8; cursor: not-allowed; }
        
         .sliding-container button.ghost {
             background-color: transparent; border-color: #fff; border-width: 2px;
@@ -188,16 +188,18 @@
         <div class="sliding-container z-10" id="sliding-container">
            
             <div class="form-container sign-up-container">
-                <form action="#">
+                <form id="form-register" onsubmit="prosesSignUp(event)">
                     <h1>Buat Akun</h1>
                     <div class="social-container">
                         <a href="#" class="social"><i class="fab fa-google"></i></a>
                     </div>
                     <span class="text-slate-400 text-xs font-medium mb-2">atau gunakan email untuk registrasi</span>
-                    <input type="text" placeholder="Nama Lengkap" />
-                    <input type="email" placeholder="Email" />
-                    <input type="password" placeholder="Password" />
-                    <button type="button" onclick="customAlert('Info', 'Ini hanya form demo animasi Sign Up!')">Daftar Sekarang</button>
+                    <input type="text" id="reg-nama" required placeholder="Nama Lengkap" />
+                    <input type="email" id="reg-email" required placeholder="Email" />
+                    <input type="password" id="reg-password" required placeholder="Password" />
+                    <button type="submit" id="btn-register">
+                        <span id="btn-register-text">Daftar Sekarang</span>
+                    </button>
                     <p class="md:hidden mt-4 text-sm text-slate-500 cursor-pointer hover:text-navy-main font-bold" id="mobileSignIn">← Kembali ke Login</p>
                 </form>
             </div>
@@ -210,7 +212,7 @@
                     <h1>E-Surat SD</h1>
                     <p class="subtext">Sistem Informasi Tata Usaha Digital</p>
                    
-                    <input type="text" id="username" required placeholder="Username atau NIP" />
+                    <input type="text" id="username" required placeholder="Username atau Email" />
                     <input type="password" id="password" required placeholder="Kata Sandi" />
                    
                     <a href="#" class="forgot-link">Lupa Password Anda?</a>
@@ -332,38 +334,10 @@
                         </div>
                         <div class="text-right">
                             <h2 id="total-masuk" class="text-4xl font-bold text-cyan-400 leading-none">124</h2>
-                            <p class="text-[10px] tracking-wider text-slate-300 uppercase mt-1">Total Bulan Ini</p>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-3 mb-6 flex-shrink-0">
-                        <div class="bg-navy-card rounded-xl p-4 border border-slate-700/50 hover:bg-navy-hover transition cursor-pointer">
-                            <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-300 mb-3"></i>
-                            <div class="text-2xl font-bold mb-1">28</div>
-                            <div class="text-[10px] text-slate-300 uppercase tracking-wide">Perlu Disposisi</div>
-                        </div>
-                        <div class="bg-navy-card rounded-xl p-4 border border-slate-700/50 hover:bg-navy-hover transition cursor-pointer">
-                            <i data-lucide="mail-warning" class="w-5 h-5 text-red-400 mb-3"></i>
-                            <div class="text-2xl font-bold mb-1">14</div>
-                            <div class="text-[10px] text-slate-300 uppercase tracking-wide">Belum Dibaca</div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between items-center mb-3 flex-shrink-0">
-                        <h3 class="font-bold text-sm">Aktivitas Terkini</h3>
-                        <a href="#" onclick="switchView('surat-masuk')" class="text-xs text-blue-300 hover:text-white">Lihat Semua</a>
-                    </div>
-
-                    <div class="flex-1 min-h-0 overflow-y-auto custom-scroll space-y-3 pr-2" id="dash-masuk-list">
-                        </div>
-
-                    <div class="flex-shrink-0 mt-5 pt-5 border-t border-slate-700/50">
-                        <button onclick="customAlert('Info','Tombol Input Surat Masuk di-klik')" class="w-full bg-teal-main hover:bg-teal-hover text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-teal-400/30">
-                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Input Surat Masuk
-                        </button>
-                    </div>
+                    <div class="flex-1 min-h-0 overflow-y-auto custom-scroll space-y-3 pr-2" id="dash-masuk-list"></div>
                 </div>
-
                 <div class="w-full md:w-1/2 bg-teal-main text-white p-6 md:p-8 flex flex-col h-full">
                     <div class="flex justify-between items-start mb-6 flex-shrink-0">
                         <div>
@@ -372,36 +346,10 @@
                         </div>
                         <div class="text-right">
                             <h2 class="text-4xl font-bold text-white leading-none">86</h2>
-                            <p class="text-[10px] tracking-wider text-teal-100 uppercase mt-1">Total Terbit</p>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-3 mb-6 flex-shrink-0">
-                        <div class="bg-teal-card rounded-xl p-4 border border-teal-300/20 hover:bg-teal-hover transition cursor-pointer">
-                            <i data-lucide="pen-tool" class="w-5 h-5 text-teal-100 mb-3"></i>
-                            <div class="text-2xl font-bold mb-1">12</div>
-                            <div class="text-[10px] text-teal-100 uppercase tracking-wide">Menunggu TTD</div>
-                        </div>
-                        <div class="bg-teal-card rounded-xl p-4 border border-teal-300/20 hover:bg-teal-hover transition cursor-pointer">
-                            <i data-lucide="save" class="w-5 h-5 text-teal-100 mb-3"></i>
-                            <div class="text-2xl font-bold mb-1">7</div>
-                            <div class="text-[10px] text-teal-100 uppercase tracking-wide">Draft Tersimpan</div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between items-center mb-3 flex-shrink-0">
-                        <h3 class="font-bold text-sm">Daftar Surat Keluar Terbaru</h3>
-                        <span class="text-[10px] text-teal-200 uppercase tracking-wide">Cek No. Terakhir</span>
-                    </div>
-
                     <div class="flex-1 min-h-0 overflow-y-auto custom-scroll space-y-3 pr-2" id="dash-keluar-list">
-                        <div class="bg-teal-card p-4 rounded-xl border border-teal-400/30 text-sm">Belum ada aktivitas surat keluar.</div>
-                    </div>
-
-                    <div class="flex-shrink-0 mt-5 pt-5 border-t border-teal-600/50">
-                        <button onclick="switchView('templat')" class="w-full bg-white text-teal-main hover:bg-slate-50 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all">
-                            <i data-lucide="file-text" class="w-5 h-5"></i> Buat Surat Baru
-                        </button>
+                        <div class="bg-teal-card p-4 rounded-xl border border-teal-400/30 text-sm">Belum ada aktivitas.</div>
                     </div>
                 </div>
             </div>
@@ -410,20 +358,12 @@
         <div id="view-surat-masuk" class="view-section bg-slate-50 p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold text-navy-main mb-6">Arsip Surat Masuk</h2>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 border-b">
-                            <tr>
-                                <th class="p-4">No</th>
-                                <th class="p-4">Asal Instansi</th>
-                                <th class="p-4">Perihal</th>
-                                <th class="p-4">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="full-masuk-table">
-                            </tbody>
-                    </table>
-                </div>
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 border-b">
+                        <tr><th class="p-4">No</th><th class="p-4">Asal Instansi</th><th class="p-4">Perihal</th><th class="p-4">Status</th></tr>
+                    </thead>
+                    <tbody id="full-masuk-table"></tbody>
+                </table>
             </div>
         </div>
 
@@ -437,18 +377,10 @@
 
         <div id="view-templat" class="view-section bg-slate-50 p-6 overflow-y-auto">
             <div class="max-w-6xl mx-auto w-full">
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-navy-main">Pilih Templat Surat</h2>
-                    <p class="text-slate-500 text-sm mt-1">Pilih format standar untuk generate dokumen otomatis.</p>
-                </div>
+                <div class="mb-6"><h2 class="text-2xl font-bold text-navy-main">Pilih Templat Surat</h2></div>
                 <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div class="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition cursor-pointer group hover:border-teal-main" onclick="customAlert('Templat', 'Fitur Templat Aktif Belajar akan segera hadir')">
-                        <div class="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-teal-main transition">
-                            <i data-lucide="graduation-cap" class="w-5 h-5 text-teal-600 group-hover:text-white"></i>
-                        </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition cursor-pointer group" onclick="customAlert('Templat', 'Segera hadir')">
                         <h3 class="font-bold text-slate-800 mb-1">Ket. Aktif Belajar</h3>
-                        <p class="text-xs text-slate-500 mb-4 line-clamp-2">Surat keterangan resmi bahwa siswa tersebut aktif bersekolah.</p>
-                        <span class="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded">421.2 / Kesiswaan</span>
                     </div>
                 </div>
             </div>
@@ -459,15 +391,13 @@
         <div class="absolute inset-0 bg-black/50" onclick="closeCustomModal()"></div>
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full z-10 shadow-2xl">
             <h3 id="modal-title" class="text-lg font-bold text-navy-main mb-2">Notifikasi</h3>
-            <p id="modal-body" class="text-slate-600 mb-6"></p>
+            <p id="modal-body" class="text-slate-600 mb-6 whitespace-pre-line"></p>
             <button onclick="closeCustomModal()" class="w-full bg-navy-main text-white py-2 rounded-xl font-bold">Tutup</button>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // URL SCRIPT GOOGLE APPS SCRIPT ANDA DI SINI
-        // ==========================================
+        // URL SCRIPT GOOGLE APPS SCRIPT ANDA
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt-0l1uIMpTaJ4kWda8K8g9nm_YKMs8bZugHv54ZfTIF8d-ONuIkr3HZWKJizNVhlbGg/exec";
 
         let currentUser = null;
@@ -503,7 +433,6 @@
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
            
-            // Update nav links
             document.querySelectorAll('.nav-link').forEach(link => {
                 if(link.getAttribute('data-target') === viewId) {
                     link.classList.add('text-navy-main', 'border-b-2', 'border-navy-main');
@@ -529,7 +458,46 @@
             }
         }
 
-        // LOGIN PROCESS
+        // ==========================================
+        // PROSES SIGN UP (REGISTRASI)
+        // ==========================================
+        async function prosesSignUp(event) {
+            event.preventDefault();
+            
+            const nama = document.getElementById('reg-nama').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const btn = document.getElementById('btn-register');
+            const btnText = document.getElementById('btn-register-text');
+
+            btn.disabled = true;
+            btnText.innerText = "Memproses...";
+
+            try {
+                // Pastikan Google Apps Script Anda bisa menerima 'action=register'
+                const url = `${SCRIPT_URL}?action=register&nama=${encodeURIComponent(nama)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+                const response = await fetch(url, { method: "GET", redirect: "follow" });
+                const result = await response.json();
+
+                if (result.status === "success" || result.success === true) {
+                    customAlert("Registrasi Berhasil", "Akun Anda berhasil dibuat!\nSilakan login menggunakan kredensial tersebut.");
+                    document.getElementById('form-register').reset();
+                    container.classList.remove("active"); // Geser kembali ke form login
+                } else {
+                    throw new Error(result.message || "Gagal melakukan pendaftaran. Silakan coba lagi.");
+                }
+            } catch (error) {
+                console.error("Register Error:", error);
+                customAlert("Registrasi Gagal", "Pesan dari server:\n" + error.message + "\n\n(Pastikan backend Google Apps Script sudah diatur untuk memproses pendaftaran).");
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = "Daftar Sekarang";
+            }
+        }
+
+        // ==========================================
+        // PROSES LOGIN
+        // ==========================================
         async function prosesLogin(event) {
             event.preventDefault();
            
@@ -540,31 +508,30 @@
             const btnIcon = document.getElementById('btn-login-icon');
             const btnSpinner = document.getElementById('btn-login-spinner');
 
-            // UI State Loading
             btn.disabled = true;
             btnText.innerText = "Memverifikasi...";
             btnIcon.classList.add('hidden');
             btnSpinner.classList.remove('hidden');
 
             try {
-                // INTEGRASI URL SCRIPT GOOGLE
-                const response = await fetch(`${SCRIPT_URL}?action=login&username=${encodeURIComponent(userInp)}&password=${encodeURIComponent(passInp)}`);
+                const url = `${SCRIPT_URL}?action=login&username=${encodeURIComponent(userInp)}&password=${encodeURIComponent(passInp)}`;
+                const response = await fetch(url, { method: "GET", redirect: "follow" });
                 const result = await response.json();
 
                 if (result.status === "success" || result.success === true) {
                     berhasilLogin(result.user || { name: userInp });
                 } else {
-                    throw new Error(result.message || "Username atau Password salah.");
+                    throw new Error(result.message || "Username atau Kata Sandi salah.");
                 }
 
             } catch (error) {
                 console.error("Login Error:", error);
-               
-                // Fallback / Simulasi Offline jika GAS belum diset return JSON-nya
+                
+                // Jika masih error tapi ingin ada akses darurat/testing, hapus blok ini jika mau ketat
                 if (userInp === "admin" && passInp === "admin") {
                    berhasilLogin({ name: "Administrator" });
                 } else {
-                    customAlert("Login Gagal", "Gagal menghubungkan ke server atau kredensial salah.");
+                    customAlert("Login Gagal", "Gagal memverifikasi akun.\nPesan error: " + error.message);
                 }
             } finally {
                 btn.disabled = false;
@@ -588,7 +555,7 @@
             location.reload(); 
         }
 
-        // RENDER DATA
+        // RENDER DATA DASHBOARD DEMO
         function renderDashboard() {
             const dashMasuk = document.getElementById('dash-masuk-list');
             const mockDataMasuk = [
