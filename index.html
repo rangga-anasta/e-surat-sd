@@ -1,307 +1,817 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>e-Surat - Sistem Informasi Tata Usaha SD</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-   
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
-                    colors: {
-                        navy: { main: '#1b2240', card: '#252d4e', hover: '#2f3961' },
-                        teal: { main: '#047787', card: '#0b8b9c', hover: '#109fb2' },
-                        dongker: { 800: '#1e3a8a' },
-                        cyan: { 600: '#0891b2' }
-                    },
-                    animation: { blob: "blob 7s infinite" },
-                    keyframes: {
-                        blob: {
-                            "0%": { transform: "translate(0px, 0px) scale(1)" },
-                            "33%": { transform: "translate(30px, -50px) scale(1.1)" },
-                            "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
-                            "100%": { transform: "translate(0px, 0px) scale(1)" },
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  Home, Inbox, Send, Settings, PenTool, Search, Plus, 
+  FileText, Download, Mail, Trash2, Eye, LogOut, Printer, 
+  CheckCircle, XCircle, FilePlus, QrCode, ShieldCheck 
+} from 'lucide-react';
+
+// ==========================================
+// CONFIG & UTILITIES
+// ==========================================
+// URL DATABASE BACKEND TERBARU ANDA
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyYyhbv_8VxAD72K2xMWsI7nxmLZShfDzDzfEqlYGMU8TLrVzR2fa7-eo_nIOdDGVFe/exec';
+
+// Fungsi untuk memuat script eksternal (jsPDF) secara dinamis
+const loadScript = (src) => {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => resolve();
+    script.onerror = (err) => reject(err);
+    document.head.appendChild(script);
+  });
+};
+
+const fileToBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = (error) => reject(error);
+});
+
+// ==========================================
+// CUSTOM COMPONENTS
+// ==========================================
+
+// Simple SVG Line Chart (Tanpa library eksternal agar aman di single-file)
+const SimpleLineChart = ({ dataMasuk, dataKeluar }) => {
+  // Fallback nilai default jika data kosong/belum dimuat
+  const safeDataMasuk = dataMasuk && dataMasuk.length > 0 ? dataMasuk : [0,0,0,0,0,0,0,0,0,0,0,0];
+  const safeDataKeluar = dataKeluar && dataKeluar.length > 0 ? dataKeluar : [0,0,0,0,0,0,0,0,0,0,0,0];
+  
+  const maxVal = Math.max(...safeDataMasuk, ...safeDataKeluar, 10);
+  const height = 200;
+  const width = 600;
+  const padding = 20;
+
+  const getPoints = (data) => {
+    return data.map((val, index) => {
+      const x = padding + (index * ((width - padding * 2) / 11));
+      const y = height - padding - ((val / maxVal) * (height - padding * 2));
+      return `${x},${y}`;
+    }).join(' ');
+  };
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  return (
+    <div className="w-full overflow-x-auto bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+      <h3 className="font-semibold text-gray-700 mb-4">Statistik Surat (Tahun Ini)</h3>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto min-w-[500px]">
+        {/* Grid lines */}
+        {[0, 0.5, 1].map(ratio => {
+          const y = height - padding - (ratio * (height - padding * 2));
+          return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+        })}
+        {/* Lines */}
+        <polyline fill="none" stroke="#3b82f6" strokeWidth="3" points={getPoints(safeDataMasuk)} strokeLinejoin="round" strokeLinecap="round" />
+        <polyline fill="none" stroke="#10b981" strokeWidth="3" points={getPoints(safeDataKeluar)} strokeLinejoin="round" strokeLinecap="round" />
+        
+        {/* X-axis labels */}
+        {months.map((m, i) => (
+          <text key={m} x={padding + (i * ((width - padding * 2) / 11))} y={height} fontSize="10" fill="#6b7280" textAnchor="middle">{m}</text>
+        ))}
+        {/* Legend */}
+        <g transform={`translate(${width - 150}, 10)`}>
+          <circle cx="0" cy="0" r="4" fill="#3b82f6" />
+          <text x="10" y="4" fontSize="10" fill="#4b5563">Surat Masuk</text>
+          <circle cx="80" cy="0" r="4" fill="#10b981" />
+          <text x="90" y="4" fontSize="10" fill="#4b5563">Surat Keluar</text>
+        </g>
+      </svg>
+    </div>
+  );
+};
+
+// ==========================================
+// MAIN APP COMPONENT
+// ==========================================
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [verifyId, setVerifyId] = useState(null);
+
+  // Settings State
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('esurat_settings');
+    return saved ? JSON.parse(saved) : {
+      namaInstansi: 'SMA Negeri 1 Nusantara',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Shield_of_the_Ministry_of_Education_and_Culture_of_Indonesia.svg/800px-Shield_of_the_Ministry_of_Education_and_Culture_of_Indonesia.svg.png',
+      alamat: 'Jl. Pendidikan No. 1, Kec. Pintar',
+      kota: 'Jakarta',
+      namaKepsek: 'Budi Santoso, M.Pd.',
+      nipKepsek: '19800101 200501 1 001'
+    };
+  });
+
+  // Cek jika ini adalah mode scan QR Code (Verify)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const vId = urlParams.get('verify');
+    if (vId) {
+      setVerifyId(vId);
+      setCurrentView('verify');
+    }
+  }, []);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // API Wrapper (Real Connection to Database Backend)
+  const apiCall = async (action, payload = {}) => {
+    setLoading(true);
+    try {
+      // Menggunakan fetch POST tanpa mendefinisikan headers untuk menghindari CORS preflight (OPTIONS)
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        // Tidak ada headers agar browser menganggapnya text/plain standar
+        body: JSON.stringify({ action, ...payload })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Terjadi kesalahan jaringan (Status: ${res.status})`);
+      }
+
+      const data = await res.json();
+      
+      // Mengasumsikan response dari backend memiliki { status: 'success', data: ... }
+      if (data.status === 'success') {
+        return data.data !== undefined ? data.data : true;
+      } else {
+        throw new Error(data.message || 'Gagal diproses oleh database');
+      }
+    } catch (err) {
+      console.error("Database API Error:", err);
+      // Untuk fungsi GET (membaca data dashboard/tabel), kita kembalikan nilai default agar UI tidak error
+      if (action.startsWith('get_')) {
+         if (action === 'get_dashboard') return { masukCount: 0, keluarCount: 0, chartMasuk: [], chartKeluar: [], latestLetter: null };
+         return [];
+      }
+      // Untuk fungsi mutasi (login, register, tambah), Lemparkan error aslinya ke komponen 
+      // agar user tahu datanya gagal tersimpan.
+      throw new Error(err.message || 'Gagal terhubung ke database.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // VIEW RENDERERS
+  // ==========================================
+
+  const renderLogin = () => {
+    const [isReg, setIsReg] = useState(false);
+    const [form, setForm] = useState({ username: '', password: '' });
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        if (isReg) {
+          await apiCall('register', form);
+          showToast('Registrasi berhasil tersimpan di database. Silakan login.');
+          setIsReg(false);
+        } else {
+          const u = await apiCall('login', form);
+          setUser(u || { username: form.username }); // Set user jika berhasil
+          showToast('Login berhasil!');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+          <img src={settings.logoUrl} alt="Logo" className="mx-auto h-24 w-auto drop-shadow-md" onError={(e) => e.target.src = 'https://via.placeholder.com/150?text=Logo'} />
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">E-Surat Pro</h2>
+          <p className="mt-2 text-sm text-gray-600">{settings.namaInstansi}</p>
+        </div>
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow-xl sm:rounded-xl sm:px-10 border border-gray-100">
+            <h3 className="text-lg font-medium text-gray-900 mb-6 text-center">
+              {isReg ? 'Registrasi Akun Baru' : 'Masuk ke Sistem'}
+            </h3>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Username</label>
+                <input required type="text" className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={form.username} onChange={e => setForm({...form, username: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input required type="password" className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+              </div>
+              <button disabled={loading} type="submit" className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50">
+                {loading ? 'Memproses ke Database...' : (isReg ? 'Daftar' : 'Masuk')}
+              </button>
+            </form>
+            <div className="mt-6 text-center text-sm">
+              <span className="text-gray-500">{isReg ? 'Sudah terdaftar di database?' : 'Belum terdaftar di database?'} </span>
+              <button onClick={() => setIsReg(!isReg)} className="font-medium text-blue-600 hover:text-blue-500">
+                {isReg ? 'Masuk di sini' : 'Daftar sekarang'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const Dashboard = () => {
+    const [data, setData] = useState(null);
+
+    useEffect(() => {
+      apiCall('get_dashboard').then(setData);
+    }, []);
+
+    if (!data) return <div className="p-8 text-center text-gray-500">Memuat data dari database...</div>;
+
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
+            <div className="p-3 bg-blue-100 text-blue-600 rounded-lg"><Inbox size={28} /></div>
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Total Surat Masuk (Tahun Ini)</p>
+              <p className="text-2xl font-bold text-gray-800">{data.masukCount || 0}</p>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
+            <div className="p-3 bg-green-100 text-green-600 rounded-lg"><Send size={28} /></div>
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Total Surat Keluar (Tahun Ini)</p>
+              <p className="text-2xl font-bold text-gray-800">{data.keluarCount || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <SimpleLineChart dataMasuk={data.chartMasuk} dataKeluar={data.chartKeluar} />
+
+        {data.latestLetter && Object.keys(data.latestLetter).length > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 text-blue-100 opacity-50"><FileText size={120} /></div>
+            <h3 className="text-lg font-bold text-blue-900 mb-2 relative z-10">Surat Terbaru Diterima</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm relative z-10">
+              <div><span className="text-blue-600/80 block text-xs font-semibold">TANGGAL</span> <span className="font-medium">{data.latestLetter.tanggal}</span></div>
+              <div><span className="text-blue-600/80 block text-xs font-semibold">ASAL SURAT</span> <span className="font-medium">{data.latestLetter.asal}</span></div>
+              <div><span className="text-blue-600/80 block text-xs font-semibold">NOMOR SURAT</span> <span className="font-medium">{data.latestLetter.nomor}</span></div>
+              <div><span className="text-blue-600/80 block text-xs font-semibold">PERIHAL</span> <span className="font-medium">{data.latestLetter.perihal}</span></div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const TableSurat = ({ type }) => {
+    const isMasuk = type === 'masuk';
+    const [surat, setSurat] = useState([]);
+    const [search, setSearch] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState(null);
+    const [form, setForm] = useState({ tanggal: '', pihak: '', nomor: '', perihal: '', filePdf: '' });
+
+    const fetchData = async () => {
+      const res = await apiCall(isMasuk ? 'get_surat_masuk' : 'get_surat_keluar');
+      if (res && Array.isArray(res)) setSurat(res);
+    };
+
+    useEffect(() => { fetchData(); }, [type]);
+
+    const handleFile = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 200 * 1024) {
+        showToast('Ukuran file PDF maksimal 200 KB', 'error');
+        e.target.value = '';
+        return;
+      }
+      if (file.type !== 'application/pdf') {
+        showToast('File harus berupa PDF', 'error');
+        e.target.value = '';
+        return;
+      }
+      try {
+        const base64 = await fileToBase64(file);
+        setForm({ ...form, filePdf: base64 });
+      } catch (e) {
+        showToast('Gagal membaca file', 'error');
+      }
+    };
+
+    const handleAdd = async (e) => {
+      e.preventDefault();
+      try {
+        const payload = { ...form, [isMasuk ? 'asal' : 'tujuan']: form.pihak, status: isMasuk ? 'Diterima' : 'Terkirim' };
+        await apiCall(isMasuk ? 'add_surat_masuk' : 'add_surat_keluar', payload);
+        showToast('Surat berhasil tersimpan di database');
+        setShowModal(false);
+        fetchData(); // Refresh data dari backend
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    const handleDelete = async (id) => {
+      if(!confirm('Hapus surat ini dari database?')) return;
+      try {
+        await apiCall(isMasuk ? 'delete_surat_masuk' : 'delete_surat_keluar', { id });
+        showToast('Surat dihapus');
+        fetchData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    const handleEmail = async (doc) => {
+      const email = prompt("Masukkan alamat email tujuan:");
+      if (!email) return;
+      try {
+        await apiCall('send_email', { email, id: doc.id });
+        showToast(`Surat diteruskan ke ${email}`);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    const handlePrintPDF = async () => {
+      const bulan = prompt("Filter Bulan (01-12) atau biarkan kosong untuk semua:");
+      const tahun = prompt("Filter Tahun (Contoh: 2023) atau biarkan kosong:");
+      
+      let filtered = surat;
+      if (bulan) filtered = filtered.filter(s => s.tanggal && s.tanggal.split('-')[1] === bulan);
+      if (tahun) filtered = filtered.filter(s => s.tanggal && s.tanggal.split('-')[0] === tahun);
+
+      try {
+        setLoading(true);
+        // Load jsPDF dynamically
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js');
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape');
+        
+        // Header
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(settings.namaInstansi, 148, 15, { align: 'center' });
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${settings.alamat}, ${settings.kota}`, 148, 22, { align: 'center' });
+        doc.line(14, 25, 283, 25);
+        
+        // Title
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`LAPORAN SURAT ${isMasuk ? 'MASUK' : 'KELUAR'}`, 148, 35, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Dicetak pada: ${new Date().toLocaleDateString('id-ID')}`, 14, 42);
+
+        // Table
+        const tableBody = filtered.map((s, i) => [
+          i + 1,
+          s.tanggal || '-',
+          isMasuk ? (s.asal || '-') : (s.tujuan || '-'),
+          s.nomor || '-',
+          s.perihal || '-',
+          s.status || '-'
+        ]);
+
+        doc.autoTable({
+          startY: 45,
+          head: [['No', 'Tanggal', isMasuk ? 'Asal Surat' : 'Tujuan', 'Nomor Surat', 'Perihal', 'Status']],
+          body: tableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246] }
+        });
+
+        // Footer / Signature
+        const finalY = doc.lastAutoTable.finalY || 45;
+        doc.text(`${settings.kota}, ............................`, 230, finalY + 20);
+        doc.text('Kepala Sekolah', 230, finalY + 26);
+        doc.text(settings.namaKepsek, 230, finalY + 45);
+        doc.text(`NIP. ${settings.nipKepsek}`, 230, finalY + 50);
+
+        doc.save(`Laporan_Surat_${isMasuk ? 'Masuk' : 'Keluar'}.pdf`);
+        showToast("Laporan PDF berhasil diunduh");
+      } catch (err) {
+        showToast("Gagal mencetak PDF. " + err.message, 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const filteredSurat = surat.filter(s => 
+      Object.values(s).some(val => val && val.toString().toLowerCase().includes(search.toLowerCase()))
+    ).slice(0, 5); // Tampilkan 5 terbaru sesuai instruksi
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-800">Data Surat {isMasuk ? 'Masuk' : 'Keluar'}</h1>
+          <div className="flex space-x-2 w-full sm:w-auto">
+            <button onClick={handlePrintPDF} className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors">
+              <Printer size={16} className="mr-2" /> Print PDF
+            </button>
+            <button onClick={() => setShowModal(true)} className="flex flex-1 sm:flex-none items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <Plus size={16} className="mr-2" /> Entri Surat
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex items-center">
+            <Search size={18} className="text-gray-400 mr-2" />
+            <input 
+              type="text" 
+              placeholder="Cari berdasarkan nomor, perihal..." 
+              className="w-full text-sm outline-none bg-transparent"
+              value={search} onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                  <th className="p-4 font-medium border-b border-gray-100">Tanggal</th>
+                  <th className="p-4 font-medium border-b border-gray-100">{isMasuk ? 'Asal Surat' : 'Tujuan'}</th>
+                  <th className="p-4 font-medium border-b border-gray-100">Nomor</th>
+                  <th className="p-4 font-medium border-b border-gray-100">Perihal</th>
+                  <th className="p-4 font-medium border-b border-gray-100">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm divide-y divide-gray-50">
+                {filteredSurat.map((row, idx) => (
+                  <tr key={row.id || idx} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 whitespace-nowrap text-gray-600">{row.tanggal}</td>
+                    <td className="p-4 text-gray-800 font-medium">{isMasuk ? row.asal : row.tujuan}</td>
+                    <td className="p-4 text-gray-600">{row.nomor}</td>
+                    <td className="p-4 text-gray-600 max-w-xs truncate">{row.perihal}</td>
+                    <td className="p-4 flex space-x-2">
+                      <button onClick={() => setPreviewDoc(row)} className="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100" title="Lihat"><Eye size={16}/></button>
+                      <button onClick={() => {
+                        // Fitur unduh dari Google Drive PDF link
+                        if(row.filePdf && row.filePdf.startsWith("http")) {
+                           window.open(row.filePdf, '_blank');
+                        } else {
+                           showToast('Dokumen PDF tidak tersedia / belum diunggah', 'error');
                         }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background-color: #f8fafc; }
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        .view-section { display: none; height: 100%; }
-        .view-section.active { display: flex; flex-direction: column; }
-        
-        /* SLIDING LOGIN ANIMATION */
-        .sliding-container {
-            position: relative; overflow: hidden; width: 768px; max-width: 95%; min-height: 520px;
-            background-color: #fff; border-radius: 30px; box-shadow: 0 14px 28px rgba(0,0,0,0.25);
-        }
-        .overlay-container {
-            position: absolute; top: 0; left: 50%; width: 50%; height: 100%;
-            overflow: hidden; transition: transform 0.6s ease-in-out; z-index: 100;
-        }
-        .overlay {
-            background: linear-gradient(135deg, #1b2240 0%, #047787 100%);
-            color: #FFFFFF; position: relative; left: -100%; height: 100%; width: 200%;
-            transform: translateX(0); transition: transform 0.6s ease-in-out;
-        }
-        .overlay-panel {
-            position: absolute; display: flex; align-items: center; justify-content: center;
-            flex-direction: column; padding: 0 40px; text-align: center; top: 0; height: 100%; width: 50%;
-        }
-        .overlay-right { right: 0; }
-        .modal-input {
-            background-color: #f1f5f9; border: 1px solid #e2e8f0;
-            padding: 12px 15px; margin: 8px 0; width: 100%; border-radius: 12px; outline: none;
-        }
-    </style>
-</head>
-<body class="text-slate-800 h-screen w-screen flex flex-col relative">
+                      }} className="p-1.5 text-green-600 bg-green-50 rounded hover:bg-green-100" title="Download/Lihat PDF"><Download size={16}/></button>
+                      <button onClick={() => handleEmail(row)} className="p-1.5 text-yellow-600 bg-yellow-50 rounded hover:bg-yellow-100" title="Teruskan Email"><Mail size={16}/></button>
+                      <button onClick={() => handleDelete(row.id)} className="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100" title="Hapus"><Trash2 size={16}/></button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredSurat.length === 0 && (
+                  <tr><td colSpan="5" className="p-8 text-center text-gray-500">Tidak ada data di database.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-    <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center overflow-hidden">
-        <div class="absolute top-0 -left-4 w-72 md:w-96 h-72 md:h-96 bg-teal-main rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
-        <div class="absolute top-0 -right-4 w-72 md:w-96 h-72 md:h-96 bg-cyan-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob" style="animation-delay: 2s"></div>
-        
-        <div class="sliding-container z-10 flex">
-            <div class="w-full md:w-1/2 p-10 flex flex-col justify-center items-center">
-                <div class="w-12 h-12 bg-gradient-to-tr from-teal-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg mb-4">
-                    <i data-lucide="mail" class="w-6 h-6 text-white"></i>
+        {/* Modal Entry */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-gray-800">Tambah Surat {isMasuk ? 'Masuk' : 'Keluar'}</h3>
+                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><XCircle size={20}/></button>
+              </div>
+              <form onSubmit={handleAdd} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Tanggal</label>
+                  <input required type="date" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, tanggal: e.target.value})} />
                 </div>
-                <h1 class="text-3xl font-extrabold text-navy-main mb-1">E-Surat SD</h1>
-                <p class="text-slate-500 mb-8 text-sm font-medium">Sistem Tata Usaha Digital</p>
-                <input type="text" placeholder="Username" class="modal-input">
-                <input type="password" placeholder="Password" class="modal-input">
-                <button onclick="prosesLogin()" class="w-full bg-navy-main text-white py-3 rounded-xl font-bold mt-4 hover:bg-teal-main transition shadow-lg flex justify-center items-center gap-2">
-                    MASUK SISTEM <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">{isMasuk ? 'Asal Instansi/Pengirim' : 'Tujuan'}</label>
+                  <input required type="text" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, pihak: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Nomor Surat</label>
+                  <input required type="text" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, nomor: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Perihal</label>
+                  <input required type="text" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, perihal: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Upload PDF (Max 200 KB)</label>
+                  <input required type="file" accept="application/pdf" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onChange={handleFile} />
+                </div>
+                <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-blue-700 mt-4">
+                  {loading ? 'Menyimpan ke Database...' : 'Simpan Surat'}
                 </button>
+              </form>
             </div>
-            <div class="hidden md:flex w-1/2 bg-gradient-to-br from-navy-main to-teal-main p-10 flex-col justify-center text-white relative overflow-hidden">
-                <div class="z-10">
-                    <h2 class="text-3xl font-bold mb-4">Halo, Rekan Guru!</h2>
-                    <p class="opacity-90 leading-relaxed">Kelola arsip surat dengan tampilan modern, grafik otomatis, dan kemudahan akses data dalam satu genggaman.</p>
+          </div>
+        )}
+
+        {/* Modal Preview Metadata */}
+        {previewDoc && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-gray-800">Preview Metadata Surat</h3>
+                <button onClick={() => setPreviewDoc(null)} className="text-gray-400 hover:text-gray-600"><XCircle size={20}/></button>
+              </div>
+              <div className="p-6">
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-3 border-b pb-2"><span className="text-gray-500">Tanggal</span><span className="col-span-2 font-medium">{previewDoc.tanggal}</span></div>
+                  <div className="grid grid-cols-3 border-b pb-2"><span className="text-gray-500">{isMasuk ? 'Asal' : 'Tujuan'}</span><span className="col-span-2 font-medium">{isMasuk ? previewDoc.asal : previewDoc.tujuan}</span></div>
+                  <div className="grid grid-cols-3 border-b pb-2"><span className="text-gray-500">Nomor</span><span className="col-span-2 font-medium">{previewDoc.nomor}</span></div>
+                  <div className="grid grid-cols-3 border-b pb-2"><span className="text-gray-500">Perihal</span><span className="col-span-2 font-medium">{previewDoc.perihal}</span></div>
+                  <div className="grid grid-cols-3"><span className="text-gray-500">Status Dokumen</span><span className="col-span-2 inline-flex items-center text-green-600 font-medium"><CheckCircle size={14} className="mr-1"/> Terarsip di Database</span></div>
                 </div>
+              </div>
             </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const Settings = () => {
+    const [form, setForm] = useState(settings);
+
+    const handleSave = (e) => {
+      e.preventDefault();
+      setSettings(form);
+      localStorage.setItem('esurat_settings', JSON.stringify(form));
+      showToast('Pengaturan berhasil diperbarui');
+    };
+
+    return (
+      <div className="max-w-2xl bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h1 className="text-xl font-bold text-gray-800 flex items-center"><Settings className="mr-2" size={24}/> Pengaturan Instansi</h1>
         </div>
-    </div>
+        <form onSubmit={handleSave} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Logo Instansi (URL / Link Gambar)</label>
+            <input required type="url" value={form.logoUrl} onChange={e => setForm({...form, logoUrl: e.target.value})} className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+            <div className="mt-2 flex items-center space-x-2 text-xs text-gray-500">
+              <img src={form.logoUrl} alt="Preview" className="h-8 w-8 object-contain rounded bg-gray-50 border" onError={(e) => e.target.style.display='none'}/>
+              <span>Preview Logo</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Instansi / Sekolah</label>
+              <input required type="text" value={form.namaInstansi} onChange={e => setForm({...form, namaInstansi: e.target.value})} className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Kota Instansi</label>
+              <input required type="text" value={form.kota} onChange={e => setForm({...form, kota: e.target.value})} className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Alamat Lengkap</label>
+            <textarea required rows="2" value={form.alamat} onChange={e => setForm({...form, alamat: e.target.value})} className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Kepala Sekolah / Pimpinan</label>
+              <input required type="text" value={form.namaKepsek} onChange={e => setForm({...form, namaKepsek: e.target.value})} className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">NIP Pimpinan</label>
+              <input required type="text" value={form.nipKepsek} onChange={e => setForm({...form, nipKepsek: e.target.value})} className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div className="pt-4 border-t border-gray-100">
+             <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Simpan Perubahan</button>
+          </div>
+        </form>
+      </div>
+    );
+  };
 
-    <header class="h-16 bg-white border-b flex items-center justify-between px-6 z-30 flex-shrink-0">
-        <div class="flex items-center gap-6">
-            <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-lg transition"><i data-lucide="menu"></i></button>
-            <span class="font-bold text-xl text-navy-main tracking-tight">E-Surat SD</span>
+  const TtdDigital = () => {
+    const [form, setForm] = useState({ tanggal: '', tujuan: '', nomor: '', perihal: '', filePdf: '' });
+    const [qrData, setQrData] = useState(null);
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const res = await apiCall('add_ttd', form);
+        // Buat URL verifikasi berdasarkan domain saat ini dan ID dari backend
+        const baseUrl = window.location.href.split('?')[0];
+        const generatedId = res.id || res; 
+        const verifyUrl = `${baseUrl}?verify=${generatedId}`;
+        setQrData(verifyUrl);
+        showToast('Tanda tangan digital berhasil direkam di database.');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+           <div className="px-6 py-4 border-b border-gray-100 flex items-center">
+            <PenTool className="text-blue-600 mr-2" size={20}/>
+            <h1 className="text-xl font-bold text-gray-800">Tanda Tangan Digital Baru</h1>
+          </div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Tanggal Surat</label>
+                  <input required type="date" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, tanggal: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Tujuan</label>
+                  <input required type="text" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, tujuan: e.target.value})} />
+                </div>
+             </div>
+             <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Nomor Surat Resmi</label>
+                <input required type="text" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, nomor: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Perihal</label>
+                <input required type="text" className="w-full border rounded-lg p-2 text-sm outline-none focus:border-blue-500" onChange={e => setForm({...form, perihal: e.target.value})} />
+              </div>
+              <button disabled={loading} type="submit" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors w-full mt-4 flex justify-center items-center">
+                {loading ? 'Menyimpan ke Database...' : <><CheckCircle size={18} className="mr-2"/> Generate Tanda Tangan & QR Code</>}
+              </button>
+          </form>
         </div>
-        <div class="flex items-center gap-5">
-            <div id="status-online" class="hidden flex items-center gap-1.5 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> ONLINE
-            </div>
-            <button class="text-slate-400 hover:text-navy-main"><i data-lucide="bell" class="w-5 h-5"></i></button>
-            <img src="https://ui-avatars.com/api/?name=Admin&background=1b2240&color=fff" class="w-9 h-9 rounded-xl border-2 border-slate-100">
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center text-center">
+           <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4"><QrCode size={32}/></div>
+           <h3 className="font-bold text-gray-800 mb-2">QR Code Tanda Tangan</h3>
+           <p className="text-xs text-gray-500 mb-6">QR Code ini akan muncul setelah Anda menggenerate surat. Tempelkan QR ini di dokumen fisik/digital Anda.</p>
+           
+           {qrData ? (
+             <div className="space-y-4 animate-in fade-in zoom-in">
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`} alt="QR Code" className="mx-auto border-4 border-white shadow-lg rounded" />
+                <button onClick={() => {
+                   navigator.clipboard.writeText(qrData);
+                   showToast('Link verifikasi disalin ke clipboard');
+                }} className="text-sm font-medium text-blue-600 hover:text-blue-800 underline">
+                   Copy Link Verifikasi
+                </button>
+             </div>
+           ) : (
+             <div className="w-48 h-48 bg-gray-100 border-2 border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400">Belum ada QR</div>
+           )}
         </div>
-    </header>
+      </div>
+    );
+  };
 
-    <div class="flex-1 flex overflow-hidden">
-        <aside id="sidebar" class="w-64 bg-white border-r flex flex-col transition-all duration-300">
-            <nav class="p-4 space-y-1 flex-1">
-                <button onclick="switchView('dashboard')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-xl font-semibold transition"><i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard</button>
-                <button onclick="switchView('surat-masuk')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-xl font-semibold transition"><i data-lucide="inbox" class="w-5 h-5"></i> Surat Masuk</button>
-                <button onclick="switchView('surat-keluar')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-navy-main rounded-xl font-semibold transition"><i data-lucide="send" class="w-5 h-5"></i> Surat Keluar</button>
-            </nav>
-            <div class="p-4 border-t">
-                <button onclick="location.reload()" class="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold transition"><i data-lucide="log-out" class="w-5 h-5"></i> Keluar</button>
-            </div>
-        </aside>
+  const VerifyPage = () => {
+    const [docData, setDocData] = useState(null);
+    const [err, setErr] = useState('');
 
-        <main class="flex-1 overflow-y-auto bg-[#f8fafc] p-6 md:p-8 custom-scroll">
-            
-            <div id="view-dashboard" class="view-section active">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-navy-main p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden group">
-                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition duration-500"></div>
-                        <p class="text-xs font-bold opacity-60 uppercase tracking-widest mb-1">Total Surat Masuk</p>
-                        <h2 id="count-masuk" class="text-5xl font-black">0</h2>
-                    </div>
-                    <div class="bg-teal-main p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden group">
-                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition duration-500"></div>
-                        <p class="text-xs font-bold opacity-60 uppercase tracking-widest mb-1">Total Surat Keluar</p>
-                        <h2 id="count-keluar" class="text-5xl font-black">0</h2>
-                    </div>
-                </div>
+    useEffect(() => {
+      if(verifyId) {
+        apiCall('verify_surat', { id: verifyId })
+          .then(res => setDocData(res))
+          .catch(e => setErr(e.message));
+      }
+    }, [verifyId]);
 
-                <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-8">
-                        <h3 class="font-extrabold text-navy-main text-lg flex items-center gap-2"><i data-lucide="line-chart" class="text-teal-main"></i> Tren Aktivitas Arsip</h3>
-                        <span class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full" id="chart-year">2026</span>
-                    </div>
-                    <div class="max-w-4xl mx-auto h-80">
-                        <canvas id="mainChart"></canvas>
-                    </div>
-                </div>
-            </div>
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden text-center">
+          <div className="bg-blue-600 p-6 text-white">
+             {docData ? <ShieldCheck size={64} className="mx-auto text-green-300 mb-2"/> : <QrCode size={64} className="mx-auto opacity-80 mb-2"/>}
+             <h1 className="text-2xl font-bold">Sistem Verifikasi e-Surat</h1>
+             <p className="text-blue-100 text-sm mt-1">{settings.namaInstansi}</p>
+          </div>
+          <div className="p-8">
+            {loading ? (
+              <p className="text-gray-500 animate-pulse">Memeriksa ke Database...</p>
+            ) : err ? (
+              <div className="text-red-500">
+                <XCircle size={48} className="mx-auto mb-3 text-red-400"/>
+                <p className="font-bold text-lg mb-1">Dokumen Tidak Valid</p>
+                <p className="text-sm">{err}</p>
+              </div>
+            ) : docData ? (
+              <div className="text-left space-y-4 border rounded-xl p-4 bg-green-50/30 border-green-100">
+                 <div className="text-center mb-4">
+                   <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide">DOKUMEN ASLI / SAH</span>
+                 </div>
+                 <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div><span className="text-gray-500 block text-xs">Nomor Surat</span><span className="font-semibold text-gray-800">{docData.nomor}</span></div>
+                    <div><span className="text-gray-500 block text-xs">Tanggal Dikeluarkan</span><span className="font-semibold text-gray-800">{docData.tanggal}</span></div>
+                    <div><span className="text-gray-500 block text-xs">Tujuan</span><span className="font-semibold text-gray-800">{docData.tujuan}</span></div>
+                    <div><span className="text-gray-500 block text-xs">Perihal</span><span className="font-semibold text-gray-800">{docData.perihal}</span></div>
+                    <div><span className="text-gray-500 block text-xs">Penandatangan</span><span className="font-semibold text-gray-800">{settings.namaKepsek} (NIP. {settings.nipKepsek})</span></div>
+                 </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-            <div id="view-surat-masuk" class="view-section">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-black text-navy-main">Arsip Surat Masuk</h2>
-                    <button class="bg-navy-main text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-navy-main/20 transition">+ Entri Surat</button>
-                </div>
-                <div class="bg-white rounded-[1.5rem] border shadow-sm overflow-hidden">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 border-b text-slate-400 font-bold">
-                            <tr>
-                                <th class="p-5">TANGGAL</th>
-                                <th class="p-5">NO. SURAT</th>
-                                <th class="p-5">ASAL INSTANSI</th>
-                                <th class="p-5">PERIHAL</th>
-                                <th class="p-5">STATUS</th>
-                                <th class="p-5 text-center">AKSI</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-masuk" class="divide-y"></tbody>
-                    </table>
-                    <div class="p-5 border-t flex justify-between items-center bg-slate-50/50">
-                        <span class="text-xs font-bold text-slate-400">Showing 1 to 5 of <span id="total-m">0</span> entries</span>
-                        <div class="flex gap-1">
-                            <button class="px-3 py-1.5 border rounded-lg bg-white text-xs font-bold hover:bg-slate-100">Prev</button>
-                            <button class="px-3 py-1.5 border rounded-lg bg-navy-main text-white text-xs font-bold">1</button>
-                            <button class="px-3 py-1.5 border rounded-lg bg-white text-xs font-bold">2</button>
-                            <button class="px-3 py-1.5 border rounded-lg bg-white text-xs font-bold hover:bg-slate-100">Next</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  // Main Render Routing
+  if (currentView === 'verify') return <VerifyPage />;
+  if (!user) return (
+    <>
+      {renderLogin()}
+      {toast && (
+        <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white shadow-lg transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
+          {toast.msg}
+        </div>
+      )}
+    </>
+  );
 
-            <div id="view-surat-keluar" class="view-section">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-black text-teal-main">Buku Surat Keluar</h2>
-                    <button class="bg-teal-main text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-teal-main/20 transition">+ Entri Surat</button>
-                </div>
-                <div class="bg-white rounded-[1.5rem] border shadow-sm overflow-hidden">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 border-b text-slate-400 font-bold">
-                            <tr>
-                                <th class="p-5">TANGGAL</th>
-                                <th class="p-5">NO. SURAT</th>
-                                <th class="p-5">TUJUAN</th>
-                                <th class="p-5">PERIHAL</th>
-                                <th class="p-5 text-center">AKSI</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-keluar" class="divide-y"></tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-    </div>
+  const navItems = [
+    { id: 'dashboard', icon: Home, label: 'Dashboard' },
+    { id: 'surat-masuk', icon: Inbox, label: 'Surat Masuk' },
+    { id: 'surat-keluar', icon: Send, label: 'Surat Keluar' },
+    { id: 'ttd-digital', icon: PenTool, label: 'TTD Digital' },
+    { id: 'settings', icon: Settings, label: 'Pengaturan' }
+  ];
 
-    <script>
-        lucide.createIcons();
+  return (
+    <div className="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
+        <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
+          <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 object-contain" onError={(e) => e.target.style.display='none'}/>
+          <div>
+            <h2 className="font-bold text-gray-800 leading-tight tracking-tight max-w-[150px] truncate">{settings.namaInstansi}</h2>
+            <p className="text-xs text-blue-600 font-medium">E-Surat Pro</p>
+          </div>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setCurrentView(item.id)}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${currentView === item.id ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <item.icon size={20} className={currentView === item.id ? 'text-blue-600' : 'text-gray-400'} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-100">
+          <button onClick={() => setUser(null)} className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl text-sm font-medium transition-colors">
+            <LogOut size={20} /><span>Keluar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Mobile Header */}
+        <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+           <div className="flex items-center space-x-2">
+              <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 object-contain" />
+              <span className="font-bold">{settings.namaInstansi}</span>
+           </div>
+           <button onClick={() => setUser(null)} className="text-gray-500"><LogOut size={20}/></button>
+        </div>
         
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyt-0l1uIMpTaJ4kWda8K8g9nm_YKMs8bZugHv54ZfTIF8d-ONuIkr3HZWKJizNVhlbGg/exec";
-        let myChart = null;
+        {/* Mobile Nav (Bottom) */}
+        <div className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-2 z-40 pb-safe">
+           {navItems.map(item => (
+             <button key={item.id} onClick={() => setCurrentView(item.id)} className={`p-2 flex flex-col items-center ${currentView === item.id ? 'text-blue-600' : 'text-gray-400'}`}>
+                <item.icon size={20} />
+                <span className="text-[10px] mt-1">{item.label}</span>
+             </button>
+           ))}
+        </div>
 
-        function prosesLogin() {
-            const overlay = document.getElementById('login-overlay');
-            overlay.style.transition = "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)";
-            overlay.style.transform = "translateY(-100%)";
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                loadData();
-            }, 800);
-        }
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+          <div className="max-w-6xl mx-auto">
+            {currentView === 'dashboard' && <Dashboard />}
+            {currentView === 'surat-masuk' && <TableSurat type="masuk" />}
+            {currentView === 'surat-keluar' && <TableSurat type="keluar" />}
+            {currentView === 'settings' && <Settings />}
+            {currentView === 'ttd-digital' && <TtdDigital />}
+          </div>
+        </main>
+      </div>
 
-        function toggleSidebar() {
-            const s = document.getElementById('sidebar');
-            s.classList.toggle('w-0');
-            s.classList.toggle('opacity-0');
-        }
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-20 md:bottom-8 right-4 md:right-8 px-6 py-3 rounded-lg text-white shadow-lg transition-all z-50 flex items-center space-x-2 ${toast.type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`}>
+          {toast.type === 'error' ? <XCircle size={18}/> : <CheckCircle size={18}/>}
+          <span className="text-sm font-medium">{toast.msg}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
-        function switchView(id) {
-            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-            document.getElementById('view-' + id).classList.add('active');
-        }
 
-        async function loadData() {
-            try {
-                const res = await fetch(GAS_URL);
-                const data = await res.json();
-                renderAll(data);
-                document.getElementById('status-online').classList.remove('hidden');
-            } catch (e) { console.error("Database connection failed."); }
-        }
-
-        function renderAll(data) {
-            const year = new Date().getFullYear();
-            document.getElementById('chart-year').innerText = year;
-            document.getElementById('count-masuk').innerText = data.masuk.length;
-            document.getElementById('count-keluar').innerText = data.keluar.length;
-            document.getElementById('total-m').innerText = data.masuk.length;
-
-            const tMasuk = document.getElementById('table-masuk');
-            tMasuk.innerHTML = data.masuk.map(s => `
-                <tr class="hover:bg-slate-50/80 transition">
-                    <td class="p-5 text-slate-500 font-medium">${s.tanggal}</td>
-                    <td class="p-5 font-bold text-navy-main">${s.nomor}</td>
-                    <td class="p-5 font-semibold">${s.asal}</td>
-                    <td class="p-5 text-slate-600">${s.perihal}</td>
-                    <td class="p-5"><span class="px-3 py-1 bg-green-100 text-green-600 rounded-full text-[10px] font-black uppercase tracking-tighter">Selesai</span></td>
-                    <td class="p-5">
-                        <div class="flex justify-center gap-3">
-                            <button title="Lihat" class="text-slate-300 hover:text-navy-main transition"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                            <button title="Unduh" class="text-slate-300 hover:text-teal-600 transition"><i data-lucide="download" class="w-4 h-4"></i></button>
-                            <a title="Email" href="mailto:?subject=Forward Surat: ${s.nomor}&body=Detail: ${s.perihal}" class="text-slate-300 hover:text-blue-500 transition"><i data-lucide="mail" class="w-4 h-4"></i></a>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-
-            const tKeluar = document.getElementById('table-keluar');
-            tKeluar.innerHTML = data.keluar.map(s => `
-                <tr class="hover:bg-slate-50/80 transition">
-                    <td class="p-5 text-slate-500 font-medium">${s.tanggal}</td>
-                    <td class="p-5 font-bold text-teal-main">${s.nomor}</td>
-                    <td class="p-5 font-semibold">${s.tujuan}</td>
-                    <td class="p-5 text-slate-600">${s.perihal}</td>
-                    <td class="p-5">
-                        <div class="flex justify-center gap-3">
-                            <button class="text-slate-300 hover:text-navy-main"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                            <button class="text-slate-300 hover:text-teal-600"><i data-lucide="download" class="w-4 h-4"></i></button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-
-            lucide.createIcons();
-            initLineChart(year);
-        }
-
-        function initLineChart(y) {
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            if(myChart) myChart.destroy();
-            const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'].map(m => `${m} ${y}`);
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Masuk', data: [15, 25, 20, 35, 30, 45], borderColor: '#1b2240', backgroundColor: 'rgba(27,34,64,0.05)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 },
-                        { label: 'Keluar', data: [10, 15, 12, 25, 20, 35], borderColor: '#047787', backgroundColor: 'rgba(4,119,135,0.05)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { labels: { usePointStyle: true, font: { weight: 'bold' } } } },
-                    scales: { y: { beginAtZero: true, grid: { borderDash: [5,5] } }, x: { grid: { display: false } } }
-                }
-            });
-        }
-    </script>
-</body>
-</html>
